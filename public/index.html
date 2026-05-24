@@ -2,43 +2,49 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#FAF8F3" />
   <title>Coze Chat</title>
 
-  <!-- ─── 字体 ─────────────────────────────── -->
+  <!-- 字体 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 
-  <!-- ─── highlight.js 主题（护眼暖色） ──────── -->
+  <!-- highlight.js 主题 -->
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/solarized-light.min.css" />
 
-  <!-- ─── 应用样式 ─────────────────────────── -->
+  <!-- 应用样式 -->
   <link rel="stylesheet" href="/css/reset.css" />
   <link rel="stylesheet" href="/css/layout.css" />
   <link rel="stylesheet" href="/css/sidebar.css" />
   <link rel="stylesheet" href="/css/chat.css" />
   <link rel="stylesheet" href="/css/components.css" />
 
-  <!-- ─── 第三方库 ─────────────────────────── -->
+  <!-- 第三方库 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
 
 <body>
-  <!-- ════════════════════════════════════════
-       应用根容器
-  ════════════════════════════════════════ -->
   <div id="app">
 
-    <!-- ──────────────────────────────────────
+    <!-- ══════════════════════════════════════
+         遮罩层（移动端侧边栏打开时）
+    ══════════════════════════════════════ -->
+    <div id="sidebar-overlay"></div>
+
+    <!-- ══════════════════════════════════════
          左侧边栏
-    ────────────────────────────────────── -->
+    ══════════════════════════════════════ -->
     <aside id="sidebar">
 
-      <!-- 标题 -->
+      <!-- 标题栏 -->
       <div class="sidebar-header">
         <div class="sidebar-logo">
           <svg viewBox="0 0 24 24" fill="currentColor">
@@ -46,13 +52,21 @@
           </svg>
         </div>
         <span class="sidebar-title">Coze Chat</span>
+        <!-- 移动端关闭按钮 -->
+        <button id="btn-sidebar-close" title="关闭菜单">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
 
-      <!-- 新建对话按钮 -->
+      <!-- 新建对话 -->
       <div class="sidebar-new-chat">
         <button id="btn-new-chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
           新建对话
         </button>
@@ -66,7 +80,6 @@
 
       <!-- 配置区域 -->
       <div class="sidebar-config">
-        <!-- 可折叠标题 -->
         <div class="sidebar-config-header" id="config-toggle">
           <div class="sidebar-config-header-left">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -81,21 +94,12 @@
           </svg>
         </div>
 
-        <!-- 配置表单（可折叠） -->
         <div class="config-body open" id="config-body">
-
-          <!-- API Key -->
           <div class="config-field">
             <label class="config-label" for="input-api-key">API Key</label>
             <div class="config-input-wrapper">
-              <input
-                id="input-api-key"
-                class="config-input has-icon"
-                type="password"
-                placeholder="pat_xxxxxxxxxxxxxxxx"
-                autocomplete="off"
-                spellcheck="false"
-              />
+              <input id="input-api-key" class="config-input has-icon" type="password"
+                placeholder="pat_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
               <button class="config-eye-btn" id="btn-toggle-key" title="切换显示">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -105,22 +109,14 @@
             </div>
           </div>
 
-          <!-- Bot ID -->
           <div class="config-field">
             <label class="config-label" for="input-bot-id">Bot ID</label>
             <div class="config-input-wrapper">
-              <input
-                id="input-bot-id"
-                class="config-input"
-                type="text"
-                placeholder="7xxxxxxxxxxxxxxxxx"
-                autocomplete="off"
-                spellcheck="false"
-              />
+              <input id="input-bot-id" class="config-input" type="text"
+                placeholder="7xxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
             </div>
           </div>
 
-          <!-- 服务区域下拉 -->
           <div class="config-field">
             <label class="config-label" for="select-base-url">服务区域</label>
             <select id="select-base-url" class="config-select">
@@ -129,30 +125,39 @@
             </select>
           </div>
 
-          <!-- 保存按钮 -->
           <button id="btn-save-config">保存配置</button>
         </div>
       </div>
     </aside>
 
-    <!-- ──────────────────────────────────────
+    <!-- ══════════════════════════════════════
          右侧主区域
-    ────────────────────────────────────── -->
+    ══════════════════════════════════════ -->
     <main id="main">
 
-      <!-- 顶部标题栏 -->
+      <!-- 顶部 Header -->
       <header id="chat-header">
-        <span class="chat-header-title" id="chat-header-title">Coze Chat</span>
+        <div class="chat-header-left">
+          <!-- 移动端汉堡按钮 -->
+          <button id="btn-menu" title="打开菜单">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <span class="chat-header-title" id="chat-header-title">Coze Chat</span>
+        </div>
         <div class="chat-header-right">
-          <!-- 并发流式指示器 -->
           <div id="stream-indicator">
             <div class="stream-dot"></div>
-            <span id="stream-count">0</span> 个对话生成中
+            <span id="stream-count">0</span>
+            <span class="stream-text"> 个对话生成中</span>
           </div>
         </div>
       </header>
 
-      <!-- 空态（无对话时显示） -->
+      <!-- 空态 -->
       <div id="empty-state" class="hidden">
         <svg class="empty-state-icon" viewBox="0 0 64 64" fill="none"
              stroke="currentColor" stroke-width="1.5">
@@ -161,22 +166,17 @@
           <line x1="20" y1="32" x2="36" y2="32"/>
         </svg>
         <div class="empty-state-title">开始与 AI 对话</div>
-        <div class="empty-state-desc">选择左侧历史对话，或点击「新建对话」开始</div>
+        <div class="empty-state-desc">点击左上角菜单选择历史对话<br>或新建对话开始聊天</div>
       </div>
 
-      <!-- 消息滚动区域 -->
+      <!-- 消息区域 -->
       <div id="messages-container"></div>
 
-      <!-- 底部输入区域 -->
+      <!-- 输入区域 -->
       <div id="input-area">
         <div class="input-wrapper">
-          <textarea
-            id="chat-input"
-            placeholder="输入消息…"
-            rows="1"
-            disabled
-          ></textarea>
-          <button id="btn-send" title="发送 (Enter)" disabled>
+          <textarea id="chat-input" placeholder="输入消息…" rows="1" disabled></textarea>
+          <button id="btn-send" title="发送" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="22" y1="2" x2="11" y2="13"/>
               <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -193,10 +193,10 @@
     </main>
   </div>
 
-  <!-- Toast 容器 -->
+  <!-- Toast -->
   <div id="toast-container"></div>
 
-  <!-- ─── 应用脚本（顺序加载） ──────────────── -->
+  <!-- 脚本 -->
   <script src="/js/store.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/stream.js"></script>

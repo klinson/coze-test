@@ -2,23 +2,33 @@
  * sidebar.js — 左侧边栏：对话列表 + 配置面板
  */
 
-// ─── DOM 引用 ────────────────────────────────
-const convListEl      = document.getElementById('conv-list');
-const btnNewChat      = document.getElementById('btn-new-chat');
-const configBody      = document.getElementById('config-body');
-const configToggle    = document.getElementById('config-toggle');
-const configToggleIcon = document.getElementById('config-toggle-icon');
-const inputApiKey     = document.getElementById('input-api-key');
-const inputBotId      = document.getElementById('input-bot-id');
-const selectBaseUrl   = document.getElementById('select-base-url');
-const btnSaveConfig   = document.getElementById('btn-save-config');
-const btnToggleKey    = document.getElementById('btn-toggle-key');
+// ─── DOM 引用（延迟到 initSidebar 后赋值） ────
+let convListEl       = null;
+let btnNewChat       = null;
+let configBody       = null;
+let configToggle     = null;
+let configToggleIcon = null;
+let inputApiKey      = null;
+let inputBotId       = null;
+let selectBaseUrl    = null;
+let btnSaveConfig    = null;
+let btnToggleKey     = null;
+let streamIndicator  = null;
+let streamIndicatorCount = null;
 
 // ─── 状态 ─────────────────────────────────────
 let activeConvId = null;
 
+// ─── 安全 classList ──────────────────────────
+function safeAdd(el, ...cls)    { if (el && el.classList) el.classList.add(...cls); }
+function safeRemove(el, ...cls) { if (el && el.classList) el.classList.remove(...cls); }
+function safeToggle(el, cls, force) {
+  if (el && el.classList) el.classList.toggle(cls, force);
+}
+
 // ─── 渲染对话列表 ─────────────────────────────
 function renderConvList() {
+  if (!convListEl) return;
   const list = Store.ConvList.get();
   convListEl.innerHTML = '';
 
@@ -32,7 +42,7 @@ function renderConvList() {
     item.className = 'conv-item' + (conv.id === activeConvId ? ' active' : '');
     item.dataset.id = conv.id;
 
-    const isStreaming = Chat.isStreaming(conv.id);
+    const streaming = Chat.isStreaming(conv.id);
 
     item.innerHTML = `
       <svg class="conv-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -42,8 +52,9 @@ function renderConvList() {
         <div class="conv-item-title" title="${escHtml(conv.title)}">${escHtml(conv.title)}</div>
         <div class="conv-item-time">${Store.formatTime(conv.updatedAt || conv.createdAt)}</div>
       </div>
-      ${isStreaming ? '<div class="conv-item-badge"></div>' : ''}
-      <button class="conv-item-delete" data-id="${conv.id}" title="删除对话" onclick="Sidebar.deleteConv(event, '${conv.id}')">
+      ${streaming ? '<div class="conv-item-badge"></div>' : ''}
+      <button class="conv-item-delete" data-id="${conv.id}" title="删除对话"
+        onclick="Sidebar.deleteConv(event, '${conv.id}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
@@ -64,13 +75,14 @@ function selectConv(convId) {
   activeConvId = convId;
   renderConvList();
   Chat.loadConversation(convId);
+  // 通知移动端侧边栏自动关闭
+  window.dispatchEvent(new CustomEvent('conv-selected'));
 }
 
 // ─── 删除对话 ────────────────────────────────
 function deleteConv(e, convId) {
   e.stopPropagation();
 
-  // 正在流式中的对话不允许删除
   if (Chat.isStreaming(convId)) {
     Toast.show('请先停止流式输出再删除', 'error');
     return;
@@ -79,7 +91,6 @@ function deleteConv(e, convId) {
   Store.ConvList.remove(convId);
 
   if (activeConvId === convId) {
-    // 删除当前对话，切换到最新的
     const list = Store.ConvList.get();
     if (list.length > 0) {
       selectConv(list[0].id);
@@ -108,21 +119,23 @@ function newConversation() {
 
 // ─── 配置面板折叠 ────────────────────────────
 function toggleConfig() {
+  if (!configBody) return;
   const isOpen = configBody.classList.contains('open');
-  configBody.classList.toggle('open', !isOpen);
-  configToggleIcon.classList.toggle('open', !isOpen);
+  safeToggle(configBody, 'open', !isOpen);
+  safeToggle(configToggleIcon, 'open', !isOpen);
 }
 
 // ─── 加载配置到表单 ──────────────────────────
 function loadConfig() {
   const cfg = Store.Config.get();
-  inputApiKey.value  = cfg.apiKey  || '';
-  inputBotId.value   = cfg.botId   || '';
-  selectBaseUrl.value = cfg.baseUrl || 'https://api.coze.cn';
+  if (inputApiKey)   inputApiKey.value    = cfg.apiKey  || '';
+  if (inputBotId)    inputBotId.value     = cfg.botId   || '';
+  if (selectBaseUrl) selectBaseUrl.value  = cfg.baseUrl || 'https://api.coze.cn';
 }
 
 // ─── 保存配置 ────────────────────────────────
 function saveConfig() {
+  if (!inputApiKey || !inputBotId || !selectBaseUrl) return;
   const cfg = {
     apiKey:  inputApiKey.value.trim(),
     botId:   inputBotId.value.trim(),
@@ -130,50 +143,50 @@ function saveConfig() {
   };
   Store.Config.save(cfg);
 
-  // 视觉反馈
-  btnSaveConfig.classList.add('saved');
-  btnSaveConfig.textContent = '✓ 已保存';
-  setTimeout(() => {
-    btnSaveConfig.classList.remove('saved');
-    btnSaveConfig.textContent = '保存配置';
-  }, 1800);
+  if (btnSaveConfig) {
+    safeAdd(btnSaveConfig, 'saved');
+    btnSaveConfig.textContent = '✓ 已保存';
+    setTimeout(() => {
+      safeRemove(btnSaveConfig, 'saved');
+      if (btnSaveConfig) btnSaveConfig.textContent = '保存配置';
+    }, 1800);
+  }
 }
 
 // ─── API Key 明文切换 ─────────────────────────
 function toggleKeyVisibility() {
+  if (!inputApiKey || !btnToggleKey) return;
   const isPassword = inputApiKey.type === 'password';
   inputApiKey.type = isPassword ? 'text' : 'password';
   btnToggleKey.innerHTML = isPassword ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
 }
 
-// ─── 更新对话标题（首条消息截取） ────────────
+// ─── 更新对话标题 ────────────────────────────
 function updateConvTitle(convId, firstUserMsg) {
   const title = firstUserMsg.slice(0, 20) + (firstUserMsg.length > 20 ? '…' : '');
   Store.ConvList.updateTitle(convId, title);
   renderConvList();
 }
 
-// ─── 标记对话流式状态（刷新列表） ────────────
+// ─── 刷新流式状态 ────────────────────────────
 function refreshStreamStatus() {
   renderConvList();
   updateStreamIndicator();
 }
 
 // ─── 并发流式指示器 ──────────────────────────
-const streamIndicator = document.getElementById('stream-indicator');
-const streamIndicatorCount = document.getElementById('stream-count');
-
 function updateStreamIndicator() {
+  if (!streamIndicator || !streamIndicatorCount) return;
   const count = Chat.streamingCount();
   if (count > 0) {
-    streamIndicator.classList.add('visible');
+    safeAdd(streamIndicator, 'visible');
     streamIndicatorCount.textContent = count;
   } else {
-    streamIndicator.classList.remove('visible');
+    safeRemove(streamIndicator, 'visible');
   }
 }
 
-// ─── SVG 图标 ────────────────────────────────
+// ─── SVG 图标常量 ────────────────────────────
 const EYE_OPEN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
   <circle cx="12" cy="12" r="3"/>
@@ -185,25 +198,39 @@ const EYE_CLOSED_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 </svg>`;
 
 function escHtml(str) {
-  return String(str)
+  return String(str || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
 
-// ─── 事件绑定 ────────────────────────────────
-btnNewChat.addEventListener('click', newConversation);
-configToggle.addEventListener('click', toggleConfig);
-btnSaveConfig.addEventListener('click', saveConfig);
-btnToggleKey.addEventListener('click', toggleKeyVisibility);
+// ─── DOM 初始化 + 事件绑定 ────────────────────
+function initSidebar() {
+  convListEl           = document.getElementById('conv-list');
+  btnNewChat           = document.getElementById('btn-new-chat');
+  configBody           = document.getElementById('config-body');
+  configToggle         = document.getElementById('config-toggle');
+  configToggleIcon     = document.getElementById('config-toggle-icon');
+  inputApiKey          = document.getElementById('input-api-key');
+  inputBotId           = document.getElementById('input-bot-id');
+  selectBaseUrl        = document.getElementById('select-base-url');
+  btnSaveConfig        = document.getElementById('btn-save-config');
+  btnToggleKey         = document.getElementById('btn-toggle-key');
+  streamIndicator      = document.getElementById('stream-indicator');
+  streamIndicatorCount = document.getElementById('stream-count');
 
-// storage 接近上限提示
-window.addEventListener('storage-near-limit', () => {
-  Toast.show('存储空间接近上限，建议清理旧对话', 'error');
-});
+  if (btnNewChat)    btnNewChat.addEventListener('click', newConversation);
+  if (configToggle)  configToggle.addEventListener('click', toggleConfig);
+  if (btnSaveConfig) btnSaveConfig.addEventListener('click', saveConfig);
+  if (btnToggleKey)  btnToggleKey.addEventListener('click', toggleKeyVisibility);
 
-// ─── 初始化 ──────────────────────────────────
+  window.addEventListener('storage-near-limit', () => {
+    Toast.show('存储空间接近上限，建议清理旧对话', 'error');
+  });
+}
+
+// ─── 应用级初始化（initSidebar 之后调用） ────
 function init() {
   loadConfig();
   const list = Store.ConvList.get();
@@ -215,6 +242,8 @@ function init() {
 }
 
 window.Sidebar = {
+  initSidebar,
+  init,
   renderConvList,
   selectConv,
   deleteConv,
@@ -222,6 +251,5 @@ window.Sidebar = {
   updateConvTitle,
   refreshStreamStatus,
   updateStreamIndicator,
-  init,
   get activeConvId() { return activeConvId; },
 };

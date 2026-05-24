@@ -20,10 +20,10 @@ router.get('/', validateMessagesRequest, async (req, res) => {
 
   try {
     // 先查询 chat 状态，判断是否可以拉取消息
-    const chatDetail = await client.chat.retrieve({
-      conversation_id: conversation_id.trim(),
-      chat_id: chat_id.trim(),
-    });
+    const chatDetail = await client.chat.retrieve(
+      conversation_id.trim(),
+      chat_id.trim(),
+    );
 
     const status = chatDetail.status;
 

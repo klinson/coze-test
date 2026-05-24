@@ -1,28 +1,37 @@
 /* ═══════════════════════════════════════════
-   layout.css — 整体三栏布局
+   layout.css — 整体布局 + 移动端响应式
 ═══════════════════════════════════════════ */
 
-/* ─── 应用容器 ───────────────────────────────── */
+/* ─── CSS 安全区（刘海屏/底部手势条） ─── */
+:root {
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+}
+
+/* ─── 应用容器 ───────────────────────────── */
 #app {
   display: flex;
-  height: 100vh;
+  height: 100dvh; /* dvh 在移动端正确排除浏览器 UI */
   overflow: hidden;
   background-color: var(--color-bg);
 }
 
 /* ═══════════════════════════════════════════
-   左侧边栏
+   左侧边栏（桌面端固定，移动端抽屉）
 ═══════════════════════════════════════════ */
 #sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background-color: var(--color-panel);
   box-shadow: var(--shadow-panel);
   position: relative;
-  z-index: 10;
+  z-index: 100;
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 侧边栏标题 */
@@ -30,9 +39,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-lg) var(--space-lg);
+  padding: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+  padding-top: calc(var(--space-lg) + var(--safe-top));
 }
 
 .sidebar-logo {
@@ -57,11 +67,30 @@
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: -0.01em;
+  flex: 1;
 }
+
+/* 侧边栏内关闭按钮（移动端可见） */
+#btn-sidebar-close {
+  display: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: background-color var(--transition), color var(--transition);
+}
+#btn-sidebar-close:hover {
+  background-color: var(--color-hover);
+  color: var(--color-text-primary);
+}
+#btn-sidebar-close svg { width: 18px; height: 18px; }
 
 /* 新建对话按钮区域 */
 .sidebar-new-chat {
-  padding: var(--space-md) var(--space-md);
+  padding: var(--space-md);
   flex-shrink: 0;
 }
 
@@ -70,6 +99,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 0 var(--space-sm);
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-section-label {
@@ -79,7 +109,6 @@
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
   padding: var(--space-md) var(--space-sm) var(--space-xs);
-  flex-shrink: 0;
 }
 
 /* 配置区域 */
@@ -87,6 +116,7 @@
   flex-shrink: 0;
   border-top: 1px solid var(--color-border);
   padding: var(--space-md);
+  padding-bottom: calc(var(--space-md) + var(--safe-bottom));
 }
 
 .sidebar-config-header {
@@ -109,10 +139,7 @@
   color: var(--color-text-muted);
 }
 
-.sidebar-config-header-left svg {
-  width: 12px;
-  height: 12px;
-}
+.sidebar-config-header-left svg { width: 12px; height: 12px; }
 
 .config-toggle-icon {
   width: 14px;
@@ -120,17 +147,30 @@
   color: var(--color-text-muted);
   transition: transform var(--transition);
 }
+.config-toggle-icon.open { transform: rotate(180deg); }
 
-.config-toggle-icon.open {
-  transform: rotate(180deg);
-}
+.config-body { display: none; }
+.config-body.open { display: block; }
 
-.config-body {
+/* ─── 遮罩层（移动端侧边栏打开时） ──────── */
+#sidebar-overlay {
   display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 99;
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  animation: overlayIn 200ms ease forwards;
 }
 
-.config-body.open {
+#sidebar-overlay.visible {
   display: block;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ═══════════════════════════════════════════
@@ -140,7 +180,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   min-width: 0;
 }
@@ -155,6 +195,31 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-panel);
+  padding-top: var(--safe-top);
+  height: calc(56px + var(--safe-top));
+}
+
+/* 汉堡菜单按钮（默认隐藏，移动端显示） */
+#btn-menu {
+  display: none;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  margin-right: var(--space-sm);
+  transition: background-color var(--transition);
+}
+#btn-menu:hover { background-color: var(--color-hover); }
+#btn-menu svg { width: 20px; height: 20px; }
+
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
 }
 
 .chat-header-title {
@@ -182,17 +247,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 输入区域 */
 #input-area {
   flex-shrink: 0;
   padding: var(--space-md) var(--space-3xl) var(--space-xl);
+  padding-bottom: calc(var(--space-xl) + var(--safe-bottom));
   border-top: 1px solid var(--color-border);
   background-color: var(--color-panel);
 }
 
-/* ─── 空态页面 ──────────────────────────────── */
+/* ─── 空态 ─────────────────────────────── */
 #empty-state {
   flex: 1;
   display: flex;
@@ -202,6 +269,8 @@
   gap: var(--space-lg);
   color: var(--color-text-muted);
   pointer-events: none;
+  padding: var(--space-2xl);
+  text-align: center;
 }
 
 .empty-state-icon {
@@ -219,18 +288,20 @@
 .empty-state-desc {
   font-size: 13px;
   color: var(--color-text-muted);
+  line-height: 1.6;
 }
 
-/* ─── Toast 提示 ────────────────────────────── */
+/* ─── Toast ─────────────────────────────── */
 #toast-container {
   position: fixed;
-  top: var(--space-xl);
+  top: calc(var(--space-xl) + var(--safe-top));
   right: var(--space-xl);
   z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   pointer-events: none;
+  max-width: calc(100vw - var(--space-2xl) * 2);
 }
 
 .toast {
@@ -243,21 +314,117 @@
   box-shadow: var(--shadow-bubble);
   animation: toastIn 200ms ease forwards;
   pointer-events: none;
+  word-break: break-word;
 }
 
 .toast.success { background-color: var(--color-success); }
 .toast.error   { background-color: var(--color-error); }
-
-.toast.fade-out {
-  animation: toastOut 200ms ease forwards;
-}
+.toast.fade-out { animation: toastOut 200ms ease forwards; }
 
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes toastOut {
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* ═══════════════════════════════════════════
+   平板断点 ≤ 768px
+═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 侧边栏变为左侧抽屉，默认隐藏在屏幕外 */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(var(--sidebar-width), 85vw);
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+  }
+
+  /* 侧边栏打开状态 */
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* 显示汉堡按钮 */
+  #btn-menu {
+    display: flex;
+  }
+
+  /* 显示侧边栏内关闭按钮 */
+  #btn-sidebar-close {
+    display: flex;
+  }
+
+  /* 消息区域减少内边距 */
+  #messages-container {
+    padding: var(--space-lg) var(--space-lg);
+    gap: var(--space-lg);
+  }
+
+  /* 输入区域减少内边距 */
+  #input-area {
+    padding: var(--space-sm) var(--space-md) calc(var(--space-md) + var(--safe-bottom));
+  }
+
+  /* header 减少内边距 */
+  #chat-header {
+    padding: var(--safe-top) var(--space-md) 0;
+    height: calc(52px + var(--safe-top));
+  }
+
+  /* 标题截断 */
+  .chat-header-title {
+    max-width: calc(100vw - 160px);
+    font-size: 14px;
+  }
+
+  /* 气泡最大宽度放宽 */
+  .message-bubble-wrapper {
+    max-width: 88%;
+  }
+
+  /* 流式指示器文字缩短 */
+  #stream-indicator .stream-text {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   手机断点 ≤ 480px
+═══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  #messages-container {
+    padding: var(--space-md) var(--space-md);
+    gap: var(--space-md);
+  }
+
+  #input-area {
+    padding: var(--space-xs) var(--space-sm) calc(var(--space-sm) + var(--safe-bottom));
+  }
+
+  .chat-header-title {
+    max-width: calc(100vw - 140px);
+    font-size: 13px;
+  }
+
+  /* 气泡更宽 */
+  .message-bubble-wrapper {
+    max-width: 92%;
+  }
+
+  /* 代码块字体缩小 */
+  .answer-content pre code {
+    font-size: 11.5px;
+  }
+
+  /* 思考块内容字体缩小 */
+  .thinking-content {
+    font-size: 11px;
+  }
 }

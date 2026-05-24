@@ -3,15 +3,6 @@
  * 负责：消息渲染、流式接收、并发管理、中断恢复
  */
 
-// ─── DOM 引用 ────────────────────────────────
-const messagesContainer = document.getElementById('messages-container');
-const emptyState        = document.getElementById('empty-state');
-const chatHeader        = document.getElementById('chat-header-title');
-const chatInput         = document.getElementById('chat-input');
-const btnSend           = document.getElementById('btn-send');
-const btnStop           = document.getElementById('btn-stop');
-const inputHint         = document.getElementById('input-hint');
-
 // ─── 并发状态 Map ─────────────────────────────
 // key: convId
 // value: { thinkingBuffer, answerBuffer, status, chat_id, conversation_id, abortController, msgId }
@@ -19,6 +10,15 @@ const streamingMap = new Map();
 
 // 当前展示的对话 ID
 let currentConvId = null;
+
+// ─── DOM 引用（延迟到 DOMContentLoaded 后赋值） ──
+let messagesContainer = null;
+let emptyState        = null;
+let chatHeader        = null;
+let chatInput         = null;
+let btnSend           = null;
+let btnStop           = null;
+let inputHint         = null;
 
 // ─── 工具：转义 HTML ─────────────────────────
 function esc(str) {
@@ -29,41 +29,52 @@ function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ─── 安全 classList 操作（防空指针） ────────
+function safeAddClass(el, ...cls) {
+  if (el && el.classList) el.classList.add(...cls);
+}
+function safeRemoveClass(el, ...cls) {
+  if (el && el.classList) el.classList.remove(...cls);
+}
+
 // ─── 显示空态 ────────────────────────────────
 function showEmpty() {
   currentConvId = null;
-  messagesContainer.innerHTML = '';
-  emptyState.classList.remove('hidden');
-  chatHeader.textContent = 'Coze Chat';
+  if (messagesContainer) messagesContainer.innerHTML = '';
+  safeRemoveClass(emptyState, 'hidden');
+  if (chatHeader) chatHeader.textContent = 'Coze Chat';
   updateInputState();
 }
 
 // ─── 加载对话 ────────────────────────────────
 function loadConversation(convId) {
   currentConvId = convId;
-  emptyState.classList.add('hidden');
+  safeAddClass(emptyState, 'hidden');
 
   // 更新标题
   const list = Store.ConvList.get();
   const conv = list.find(c => c.id === convId);
-  chatHeader.textContent = conv ? conv.title : '新对话';
+  if (chatHeader) chatHeader.textContent = conv ? conv.title : '新对话';
 
   // 渲染消息列表
-  messagesContainer.innerHTML = '';
-  const messages = Store.ConvMessages.get(convId);
-  messages.forEach(msg => renderMessage(msg, convId, false));
+  if (messagesContainer) {
+    messagesContainer.innerHTML = '';
+    const messages = Store.ConvMessages.get(convId);
+    messages.forEach(msg => renderMessage(msg, convId, false));
+  }
 
-  // 如果有正在流式的消息（切换回来），不做特殊处理，状态已在 streamingMap 中
   scrollToBottom();
   updateInputState();
 }
 
 // ─── 渲染单条消息 ─────────────────────────────
 function renderMessage(msg, convId, scrollDown = true) {
+  if (!messagesContainer) return null;
   const isUser = msg.role === 'user';
   const row = document.createElement('div');
   row.className = `message-row ${isUser ? 'user' : 'ai'}`;
-  row.dataset.msgId = msg.id;
+  // 用独立属性标记 row，避免与 .message-bubble 内的 data-msg-id 冲突
+  row.dataset.rowMsgId = msg.id;
 
   if (isUser) {
     row.innerHTML = buildUserBubble(msg);
@@ -93,11 +104,11 @@ function buildUserBubble(msg) {
 
 // ─── 构建 AI 气泡 HTML ───────────────────────
 function buildAiBubble(msg, convId) {
-  const hasThinking = msg.thinking && msg.thinking.trim();
-  const hasAnswer   = msg.answer && msg.answer.trim();
-  const isStreaming  = msg.status === 'streaming';
+  const hasThinking   = msg.thinking && msg.thinking.trim();
+  const hasAnswer     = msg.answer && msg.answer.trim();
+  const isStreaming   = msg.status === 'streaming';
   const isInterrupted = msg.status === 'interrupted';
-  const isError      = msg.status === 'error';
+  const isError       = msg.status === 'error';
 
   const thinkingHtml = hasThinking
     ? buildThinkingBlock(msg.thinking, isStreaming)
@@ -112,9 +123,7 @@ function buildAiBubble(msg, convId) {
     answerHtml = `<div class="answer-content streaming-cursor"></div>`;
   }
 
-  const actionsHtml = isInterrupted
-    ? buildInterruptedActions(msg, convId)
-    : '';
+  const actionsHtml = isInterrupted ? buildInterruptedActions(msg, convId) : '';
 
   return `
     <div class="message-avatar ai">
@@ -154,12 +163,14 @@ function buildInterruptedActions(msg, convId) {
     <div class="message-actions">
       <span class="interrupted-hint">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         输出中断
       </span>
       <button class="btn-refetch"
-        onclick="Chat.refetchMessage('${convId}', '${msg.id}', '${msg.chat_id}', '${msg.conversation_id}', this)"
+        onclick="Chat.refetchMessage('${convId}', '${msg.id}', '${msg.chat_id || ''}', '${msg.conversation_id || ''}', this)"
         title="从 Coze 服务器拉取完整回复">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6M1 20v-6h6"/>
@@ -173,11 +184,14 @@ function buildInterruptedActions(msg, convId) {
 
 // ─── 发送消息 ────────────────────────────────
 async function sendMessage() {
+  if (!chatInput) return;
   const text = chatInput.value.trim();
   if (!text) {
-    // 抖动提示
-    document.querySelector('.input-wrapper').classList.add('shake');
-    setTimeout(() => document.querySelector('.input-wrapper').classList.remove('shake'), 300);
+    const wrapper = document.querySelector('.input-wrapper');
+    if (wrapper) {
+      wrapper.classList.add('shake');
+      setTimeout(() => wrapper.classList.remove('shake'), 300);
+    }
     return;
   }
 
@@ -187,10 +201,10 @@ async function sendMessage() {
     return;
   }
 
-  // 如果没有当前对话，自动新建
+  // 没有当前对话，自动新建
   if (!currentConvId) {
     Sidebar.newConversation();
-    return; // newConversation 会触发 selectConv → loadConversation，再等用户操作
+    return;
   }
 
   const convId = currentConvId;
@@ -244,7 +258,7 @@ async function sendMessage() {
   updateInputState();
   Sidebar.refreshStreamStatus();
 
-  // ④ 构造历史消息（不包含当前这条 AI 空消息）
+  // ④ 构造历史消息
   const historyMessages = messages
     .filter(m => m.role === 'user' || (m.role === 'assistant' && m.status === 'completed' && m.answer))
     .map(m => ({
@@ -252,7 +266,7 @@ async function sendMessage() {
       content: m.role === 'user' ? m.content : m.answer,
     }));
 
-  // ⑤ 获取已有的 conversation_id（复用 Coze 会话上下文）
+  // ⑤ 获取已有 Coze conversation_id
   const existingConvId = getCozeConversationId(convId);
 
   try {
@@ -268,7 +282,7 @@ async function sendMessage() {
     );
 
     await Stream.readStream(response, {
-      onMeta: (meta) => handleMeta(convId, aiMsgId, meta),
+      onMeta:     (meta) => handleMeta(convId, aiMsgId, meta),
       onThinking: (chunk) => handleThinking(convId, aiMsgId, chunk),
       onAnswer:   (chunk) => handleAnswer(convId, aiMsgId, chunk),
       onDone:     () => handleDone(convId, aiMsgId),
@@ -284,7 +298,7 @@ async function sendMessage() {
   }
 }
 
-// ─── 获取已有的 Coze conversation_id ─────────
+// ─── 获取已有 Coze conversation_id ───────────
 function getCozeConversationId(convId) {
   const messages = Store.ConvMessages.get(convId);
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -299,7 +313,6 @@ function handleMeta(convId, msgId, meta) {
   if (!state || state.msgId !== msgId) return;
   state.chat_id = meta.chat_id;
   state.conversation_id = meta.conversation_id;
-  // 写入 localStorage，刷新后可用于拉取
   Store.ConvMessages.updateMessage(convId, msgId, {
     chat_id:         meta.chat_id,
     conversation_id: meta.conversation_id,
@@ -310,21 +323,20 @@ function handleThinking(convId, msgId, chunk) {
   const state = streamingMap.get(convId);
   if (!state || state.msgId !== msgId) return;
   state.thinkingBuffer += chunk;
-  updateAiBubble(convId, msgId, state, true);
+  updateAiBubble(convId, msgId, state);
 }
 
 function handleAnswer(convId, msgId, chunk) {
   const state = streamingMap.get(convId);
   if (!state || state.msgId !== msgId) return;
   state.answerBuffer += chunk;
-  updateAiBubble(convId, msgId, state, true);
+  updateAiBubble(convId, msgId, state);
 }
 
 function handleDone(convId, msgId) {
   const state = streamingMap.get(convId);
   if (!state || state.msgId !== msgId) return;
 
-  // 持久化完整内容
   Store.ConvMessages.updateMessage(convId, msgId, {
     thinking: state.thinkingBuffer,
     answer:   state.answerBuffer,
@@ -333,8 +345,6 @@ function handleDone(convId, msgId) {
   Store.ConvList.updateTimestamp(convId);
 
   streamingMap.delete(convId);
-
-  // 最终渲染（关闭流式光标，折叠思考块）
   finalizeAiBubble(convId, msgId, state);
   updateInputState();
   Sidebar.refreshStreamStatus();
@@ -375,15 +385,33 @@ function handleInterrupted(convId, msgId) {
   Sidebar.refreshStreamStatus();
 }
 
+// ─── 获取气泡相关 DOM 节点 ────────────────────
+// HTML 结构：
+//   .message-row.ai  [data-row-msg-id]
+//     .message-avatar
+//     .message-bubble-wrapper
+//       .message-bubble.ai  [data-msg-id]  ← 精确选择器匹配这里
+//         .thinking-block
+//         .answer-content
+//       .message-time
+//       .message-actions
+function getBubbleNodes(msgId) {
+  if (!messagesContainer) return null;
+  // 精确匹配 .message-bubble，不会匹配到外层 .message-row
+  const bubble = messagesContainer.querySelector(`.message-bubble[data-msg-id="${msgId}"]`);
+  if (!bubble) return null;
+  const bubbleWrapper = bubble.parentElement;          // .message-bubble-wrapper
+  const messageRow    = bubbleWrapper ? bubbleWrapper.parentElement : null; // .message-row
+  return { bubble, bubbleWrapper, messageRow };
+}
+
 // ─── 更新流式气泡（增量渲染） ─────────────────
-function updateAiBubble(convId, msgId, state, isStreaming) {
-  if (convId !== currentConvId) return; // 不在视口，不操作 DOM
+function updateAiBubble(convId, msgId, state) {
+  if (convId !== currentConvId) return;
 
-  const row = messagesContainer.querySelector(`[data-msg-id="${msgId}"]`);
-  if (!row) return;
-
-  const bubble = row.closest('.message-bubble');
-  if (!bubble) return;
+  const nodes = getBubbleNodes(msgId);
+  if (!nodes) return;
+  const { bubble } = nodes;
 
   // 更新思考块
   if (state.thinkingBuffer) {
@@ -392,12 +420,11 @@ function updateAiBubble(convId, msgId, state, isStreaming) {
       const div = document.createElement('div');
       div.innerHTML = buildThinkingBlock(state.thinkingBuffer, true);
       thinkingBlock = div.firstElementChild;
-      bubble.insertBefore(thinkingBlock, bubble.firstChild);
+      if (thinkingBlock) bubble.insertBefore(thinkingBlock, bubble.firstChild);
     } else {
       const contentEl = thinkingBlock.querySelector('.thinking-content');
       if (contentEl) {
         contentEl.textContent = state.thinkingBuffer;
-        // 自动滚动思考内容到底部
         contentEl.scrollTop = contentEl.scrollHeight;
       }
       thinkingBlock.open = true;
@@ -414,7 +441,7 @@ function updateAiBubble(convId, msgId, state, isStreaming) {
 
   if (state.answerBuffer) {
     answerEl.innerHTML = Renderer.renderMarkdown(state.answerBuffer);
-    answerEl.classList.add('streaming-cursor');
+    safeAddClass(answerEl, 'streaming-cursor');
   }
 
   scrollToBottom();
@@ -424,25 +451,23 @@ function updateAiBubble(convId, msgId, state, isStreaming) {
 function finalizeAiBubble(convId, msgId, state, isError = false, errMsg = null, isInterrupted = false) {
   if (convId !== currentConvId) return;
 
-  const row = messagesContainer.querySelector(`[data-msg-id="${msgId}"]`);
-  if (!row) return;
-
-  const bubble = row.closest('.message-bubble');
-  if (!bubble) return;
+  const nodes = getBubbleNodes(msgId);
+  if (!nodes) return;
+  const { bubble, bubbleWrapper } = nodes;
 
   // 移除流式光标
   bubble.querySelectorAll('.streaming-cursor').forEach(el => {
-    el.classList.remove('streaming-cursor');
+    safeRemoveClass(el, 'streaming-cursor');
   });
 
   // 折叠思考块，恢复交互
   const thinkingBlock = bubble.querySelector('.thinking-block');
   if (thinkingBlock) {
-    thinkingBlock.classList.remove('streaming');
-    thinkingBlock.open = false; // 默认折叠
+    safeRemoveClass(thinkingBlock, 'streaming');
+    thinkingBlock.open = false;
   }
 
-  // 错误状态替换正文
+  // 错误状态：替换正文区域
   if (isError && errMsg) {
     let answerEl = bubble.querySelector('.answer-content');
     if (!answerEl) {
@@ -453,14 +478,14 @@ function finalizeAiBubble(convId, msgId, state, isError = false, errMsg = null, 
     answerEl.textContent = errMsg;
   }
 
-  // 中断状态：在气泡外添加操作栏
+  // 中断状态：在 bubbleWrapper 末尾添加操作栏
   if (isInterrupted) {
     const msg = Store.ConvMessages.get(convId).find(m => m.id === msgId);
-    if (msg) {
+    if (msg && bubbleWrapper) {
       const actionsDiv = document.createElement('div');
       actionsDiv.innerHTML = buildInterruptedActions(msg, convId);
-      const bubbleWrapper = row.querySelector('.message-bubble-wrapper');
-      if (bubbleWrapper) bubbleWrapper.appendChild(actionsDiv.firstElementChild);
+      const firstChild = actionsDiv.firstElementChild;
+      if (firstChild) bubbleWrapper.appendChild(firstChild);
     }
   }
 }
@@ -473,15 +498,17 @@ async function refetchMessage(convId, msgId, chatId, cozeConvId, btn) {
   }
 
   const cfg = Store.Config.get();
-  btn.disabled = true;
-  btn.classList.add('loading');
-  btn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M23 4v6h-6M1 20v-6h6"/>
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-    </svg>
-    获取中…
-  `;
+  if (btn) {
+    btn.disabled = true;
+    safeAddClass(btn, 'loading');
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      获取中…
+    `;
+  }
 
   try {
     const result = await Api.fetchMessages({
@@ -492,46 +519,41 @@ async function refetchMessage(convId, msgId, chatId, cozeConvId, btn) {
       conversation_id: cozeConvId,
     });
 
-    if (result.error && !result.answer) {
-      throw new Error(result.error);
-    }
+    if (result.error && !result.answer) throw new Error(result.error);
 
-    // 持久化
     Store.ConvMessages.updateMessage(convId, msgId, {
       thinking: result.thinking || '',
       answer:   result.answer   || '',
       status:   'completed',
     });
 
-    // 重新渲染该消息
+    // 重新渲染该消息行（整行替换）
     const msg = Store.ConvMessages.get(convId).find(m => m.id === msgId);
-    if (msg && convId === currentConvId) {
-      const row = messagesContainer.querySelector(`[data-msg-id="${msgId}"]`);
-      if (row) {
-        const msgRow = row.closest('.message-row');
-        if (msgRow) {
-          // 重新构建这一行
-          const tempDiv = document.createElement('div');
-          tempDiv.className = msgRow.className;
-          tempDiv.dataset.msgId = msgId;
-          tempDiv.innerHTML = buildAiBubble(msg, convId);
-          msgRow.replaceWith(tempDiv);
-        }
+    if (msg && convId === currentConvId && messagesContainer) {
+      const oldRow = messagesContainer.querySelector(`.message-row[data-row-msg-id="${msgId}"]`);
+      if (oldRow) {
+        const newRow = document.createElement('div');
+        newRow.className = oldRow.className;
+        newRow.dataset.rowMsgId = msgId;
+        newRow.innerHTML = buildAiBubble(msg, convId);
+        oldRow.replaceWith(newRow);
       }
     }
 
     Toast.show('已补全回复', 'success');
   } catch (err) {
     Toast.show(err.message || '拉取失败，请重试', 'error');
-    btn.disabled = false;
-    btn.classList.remove('loading');
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 4v6h-6M1 20v-6h6"/>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-      </svg>
-      拉取完整回复
-    `;
+    if (btn) {
+      btn.disabled = false;
+      safeRemoveClass(btn, 'loading');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        拉取完整回复
+      `;
+    }
   }
 }
 
@@ -539,32 +561,36 @@ async function refetchMessage(convId, msgId, chatId, cozeConvId, btn) {
 function stopCurrentStream() {
   if (!currentConvId) return;
   const state = streamingMap.get(currentConvId);
-  if (state) {
+  if (state && state.abortController) {
     state.abortController.abort();
   }
 }
 
 // ─── 工具：滚动到底部 ────────────────────────
 function scrollToBottom() {
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  if (messagesContainer) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
 }
 
 // ─── 更新输入区域状态 ────────────────────────
 function updateInputState() {
-  const convStreaming = currentConvId && streamingMap.has(currentConvId);
+  const convStreaming    = currentConvId && streamingMap.has(currentConvId);
   const anyConvSelected = !!currentConvId;
 
-  chatInput.disabled = !anyConvSelected;
-  chatInput.placeholder = anyConvSelected ? '输入消息…' : '请先选择或新建对话';
+  if (chatInput) {
+    chatInput.disabled = !anyConvSelected;
+    chatInput.placeholder = anyConvSelected ? '输入消息…' : '请先选择或新建对话';
+  }
 
   if (convStreaming) {
-    btnSend.classList.add('hidden');
-    btnStop.classList.remove('hidden');
-    inputHint.textContent = '正在生成…';
+    safeAddClass(btnSend, 'hidden');
+    safeRemoveClass(btnStop, 'hidden');
+    if (inputHint) inputHint.textContent = '正在生成…';
   } else {
-    btnSend.classList.remove('hidden');
-    btnStop.classList.add('hidden');
-    inputHint.textContent = 'Enter 发送 · Shift+Enter 换行';
+    safeRemoveClass(btnSend, 'hidden');
+    safeAddClass(btnStop, 'hidden');
+    if (inputHint) inputHint.textContent = 'Enter 发送 · Shift+Enter 换行';
   }
 }
 
@@ -577,25 +603,37 @@ function streamingCount() {
   return streamingMap.size;
 }
 
-// ─── 事件绑定 ────────────────────────────────
-btnSend.addEventListener('click', sendMessage);
-btnStop.addEventListener('click', stopCurrentStream);
+// ─── DOM 初始化 + 事件绑定（DOMContentLoaded） ──
+function initChat() {
+  messagesContainer = document.getElementById('messages-container');
+  emptyState        = document.getElementById('empty-state');
+  chatHeader        = document.getElementById('chat-header-title');
+  chatInput         = document.getElementById('chat-input');
+  btnSend           = document.getElementById('btn-send');
+  btnStop           = document.getElementById('btn-stop');
+  inputHint         = document.getElementById('input-hint');
 
-chatInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
+  if (btnSend) btnSend.addEventListener('click', sendMessage);
+  if (btnStop) btnStop.addEventListener('click', stopCurrentStream);
+
+  if (chatInput) {
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      const maxH = parseFloat(getComputedStyle(chatInput).lineHeight) * 6;
+      chatInput.style.height = Math.min(chatInput.scrollHeight, maxH) + 'px';
+    });
   }
-});
-
-// textarea 自动扩展高度
-chatInput.addEventListener('input', () => {
-  chatInput.style.height = 'auto';
-  const maxH = parseFloat(getComputedStyle(chatInput).lineHeight) * 6;
-  chatInput.style.height = Math.min(chatInput.scrollHeight, maxH) + 'px';
-});
+}
 
 window.Chat = {
+  initChat,
   showEmpty,
   loadConversation,
   sendMessage,

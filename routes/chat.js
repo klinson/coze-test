@@ -82,16 +82,26 @@ router.post('/stream', validateChatRequest, async (req, res) => {
           break;
 
         // 增量消息内容
+        // data 是 ChatV3Message 结构：
+        //   data.type          => MessageType: 'answer' | 'function_call' | 'tool_output' | ...
+        //   data.content       => 本次增量文本（answer 类型时）
+        //   data.reasoning_content => 深度思考增量文本（顶层独立字段，非 type 判断）
         case ChatEventType.CONVERSATION_MESSAGE_DELTA: {
-          const contentType = data.type; // 'answer' | 'reasoning_content' 等
-          const content = data.content || '';
+          const msgType = data.type;
 
-          if (contentType === 'answer') {
-            sendEvent({ type: 'answer', content });
-          } else if (contentType === 'reasoning_content') {
-            sendEvent({ type: 'thinking', content });
+          // 正文回答（增量）
+          if (msgType === 'answer') {
+            const content = data.content || '';
+            if (content) sendEvent({ type: 'answer', content });
           }
-          // 其他类型（function_call 等）暂不处理
+
+          // 深度思考内容（独立顶层字段，与 type 无关，只要有值就推送）
+          const reasoningChunk = data.reasoning_content || '';
+          if (reasoningChunk) {
+            sendEvent({ type: 'thinking', content: reasoningChunk });
+          }
+
+          // 其他类型（function_call / tool_output 等）暂不处理
           break;
         }
 

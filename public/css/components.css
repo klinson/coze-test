@@ -20,75 +20,35 @@
   user-select: none;
   white-space: nowrap;
   border: 1px solid transparent;
+  /* 移动端防止双击缩放 */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.btn:active {
-  transform: translateY(1px);
-}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
+.btn-primary { background-color: var(--color-primary); color: var(--color-text-white); }
+.btn-primary:hover:not(:disabled) { background-color: var(--color-primary-hover); }
+.btn-primary:active:not(:disabled) { background-color: var(--color-primary-dark); }
 
-.btn svg {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
-/* 主按钮 */
-.btn-primary {
-  background-color: var(--color-primary);
-  color: var(--color-text-white);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-}
-
-.btn-primary:active:not(:disabled) {
-  background-color: var(--color-primary-dark);
-}
-
-/* 次要按钮（边框样式） */
 .btn-secondary {
   background-color: transparent;
   color: var(--color-text-secondary);
   border-color: var(--color-border);
 }
-
 .btn-secondary:hover:not(:disabled) {
   background-color: var(--color-hover);
   color: var(--color-text-primary);
 }
 
-/* 危险按钮（停止流式） */
-.btn-danger {
-  background-color: var(--color-error);
-  color: var(--color-text-white);
-}
+.btn-danger { background-color: var(--color-error); color: var(--color-text-white); }
+.btn-danger:hover:not(:disabled) { background-color: #c94a3a; }
 
-.btn-danger:hover:not(:disabled) {
-  background-color: #c94a3a;
-}
-
-/* 全宽按钮 */
-.btn-block {
-  width: 100%;
-}
-
-/* 小号按钮 */
-.btn-sm {
-  padding: 4px var(--space-sm);
-  font-size: 12px;
-}
-
-.btn-sm svg {
-  width: 13px;
-  height: 13px;
-}
+.btn-block { width: 100%; }
+.btn-sm { padding: 4px var(--space-sm); font-size: 12px; }
+.btn-sm svg { width: 13px; height: 13px; }
 
 /* ─── 新建对话按钮 ──────────────────────────── */
 #btn-new-chat {
@@ -107,21 +67,15 @@
   gap: var(--space-xs);
   border: none;
   transition: background-color var(--transition), transform var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* 移动端足够高的点击区域 */
+  min-height: 40px;
 }
 
-#btn-new-chat:hover {
-  background-color: var(--color-primary-hover);
-}
-
-#btn-new-chat:active {
-  background-color: var(--color-primary-dark);
-  transform: translateY(1px);
-}
-
-#btn-new-chat svg {
-  width: 15px;
-  height: 15px;
-}
+#btn-new-chat:hover { background-color: var(--color-primary-hover); }
+#btn-new-chat:active { background-color: var(--color-primary-dark); transform: translateY(1px); }
+#btn-new-chat svg { width: 15px; height: 15px; }
 
 /* ─── 保存配置按钮 ──────────────────────────── */
 #btn-save-config {
@@ -138,13 +92,11 @@
   margin-top: var(--space-sm);
   transition: background-color var(--transition), color var(--transition),
               border-color var(--transition), transform var(--transition);
+  touch-action: manipulation;
+  min-height: 36px;
 }
 
-#btn-save-config:hover {
-  background-color: var(--color-hover);
-  color: var(--color-text-primary);
-}
-
+#btn-save-config:hover { background-color: var(--color-hover); color: var(--color-text-primary); }
 #btn-save-config.saved {
   border-color: var(--color-success);
   color: var(--color-success);
@@ -176,25 +128,21 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--color-text-primary);
-  max-height: calc(1.6em * 6 + 0px); /* 最多 6 行 */
+  max-height: calc(1.6em * 6);
   overflow-y: auto;
   padding: 2px 0;
+  /* 移动端防止缩放 */
+  font-size: max(16px, 14px);
 }
 
-#chat-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-#chat-input:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
-}
+#chat-input::placeholder { color: var(--color-text-muted); }
+#chat-input:disabled { cursor: not-allowed; color: var(--color-text-muted); }
 
 /* 发送 / 停止按钮 */
 #btn-send,
 #btn-stop {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   display: flex;
@@ -203,40 +151,19 @@
   cursor: pointer;
   transition: background-color var(--transition), transform var(--transition);
   border: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-#btn-send {
-  background-color: var(--color-primary);
-  color: var(--color-text-white);
-}
+#btn-send { background-color: var(--color-primary); color: var(--color-text-white); }
+#btn-send:hover:not(:disabled) { background-color: var(--color-primary-hover); }
+#btn-send:active:not(:disabled) { transform: scale(0.93); }
+#btn-send:disabled { background-color: var(--color-border); cursor: not-allowed; }
 
-#btn-send:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-}
+#btn-stop { background-color: var(--color-error); color: var(--color-text-white); }
+#btn-stop:hover { background-color: #c94a3a; }
 
-#btn-send:active:not(:disabled) {
-  transform: scale(0.93);
-}
-
-#btn-send:disabled {
-  background-color: var(--color-border);
-  cursor: not-allowed;
-}
-
-#btn-stop {
-  background-color: var(--color-error);
-  color: var(--color-text-white);
-}
-
-#btn-stop:hover {
-  background-color: #c94a3a;
-}
-
-#btn-send svg,
-#btn-stop svg {
-  width: 16px;
-  height: 16px;
-}
+#btn-send svg, #btn-stop svg { width: 16px; height: 16px; }
 
 /* 输入区底部提示 */
 .input-hint {
@@ -246,7 +173,22 @@
   padding: 0 2px;
 }
 
-/* 无效输入时抖动 */
+/* 移动端隐藏快捷键提示 */
+@media (max-width: 768px) {
+  .input-hint { display: none; }
+
+  #chat-input {
+    /* 移动端允许更多行 */
+    max-height: calc(1.6em * 5);
+  }
+
+  #btn-send, #btn-stop {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ─── 无效输入抖动 ──────────────────────────── */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%       { transform: translateX(-4px); }
@@ -254,16 +196,9 @@
   60%       { transform: translateX(-3px); }
   80%       { transform: translateX(3px); }
 }
+.shake { animation: shake 300ms ease; }
 
-.shake {
-  animation: shake 300ms ease;
-}
-
-/* ─── Loading 旋转 ──────────────────────────── */
-.spin {
-  animation: spin 1s linear infinite;
-}
-
+.spin { animation: spin 1s linear infinite; }
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
