@@ -577,6 +577,7 @@ function scrollToBottom() {
 function updateInputState() {
   const convStreaming    = currentConvId && streamingMap.has(currentConvId);
   const anyConvSelected = !!currentConvId;
+  const hasText         = chatInput ? chatInput.value.trim().length > 0 : false;
 
   if (chatInput) {
     chatInput.disabled = !anyConvSelected;
@@ -590,6 +591,8 @@ function updateInputState() {
   } else {
     safeRemoveClass(btnSend, 'hidden');
     safeAddClass(btnStop, 'hidden');
+    // 有对话 && 有内容 才可发送
+    if (btnSend) btnSend.disabled = !anyConvSelected || !hasText;
     if (inputHint) inputHint.textContent = 'Enter 发送 · Shift+Enter 换行';
   }
 }
@@ -628,6 +631,8 @@ function initChat() {
       chatInput.style.height = 'auto';
       const maxH = parseFloat(getComputedStyle(chatInput).lineHeight) * 6;
       chatInput.style.height = Math.min(chatInput.scrollHeight, maxH) + 'px';
+      // 实时更新发送按钮可用状态
+      updateInputState();
     });
   }
 }
