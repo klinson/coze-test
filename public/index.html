@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coze Chat</title>
+
+  <!-- ─── 字体 ─────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- ─── highlight.js 主题（护眼暖色） ──────── -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/solarized-light.min.css" />
+
+  <!-- ─── 应用样式 ─────────────────────────── -->
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/sidebar.css" />
+  <link rel="stylesheet" href="/css/chat.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+
+  <!-- ─── 第三方库 ─────────────────────────── -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+
+<body>
+  <!-- ════════════════════════════════════════
+       应用根容器
+  ════════════════════════════════════════ -->
+  <div id="app">
+
+    <!-- ──────────────────────────────────────
+         左侧边栏
+    ────────────────────────────────────── -->
+    <aside id="sidebar">
+
+      <!-- 标题 -->
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+          </svg>
+        </div>
+        <span class="sidebar-title">Coze Chat</span>
+      </div>
+
+      <!-- 新建对话按钮 -->
+      <div class="sidebar-new-chat">
+        <button id="btn-new-chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          新建对话
+        </button>
+      </div>
+
+      <!-- 历史对话列表 -->
+      <div class="sidebar-conversations">
+        <div class="sidebar-section-label">历史对话</div>
+        <div id="conv-list"></div>
+      </div>
+
+      <!-- 配置区域 -->
+      <div class="sidebar-config">
+        <!-- 可折叠标题 -->
+        <div class="sidebar-config-header" id="config-toggle">
+          <div class="sidebar-config-header-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+            配置
+          </div>
+          <svg id="config-toggle-icon" class="config-toggle-icon" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+
+        <!-- 配置表单（可折叠） -->
+        <div class="config-body open" id="config-body">
+
+          <!-- API Key -->
+          <div class="config-field">
+            <label class="config-label" for="input-api-key">API Key</label>
+            <div class="config-input-wrapper">
+              <input
+                id="input-api-key"
+                class="config-input has-icon"
+                type="password"
+                placeholder="pat_xxxxxxxxxxxxxxxx"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button class="config-eye-btn" id="btn-toggle-key" title="切换显示">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bot ID -->
+          <div class="config-field">
+            <label class="config-label" for="input-bot-id">Bot ID</label>
+            <div class="config-input-wrapper">
+              <input
+                id="input-bot-id"
+                class="config-input"
+                type="text"
+                placeholder="7xxxxxxxxxxxxxxxxx"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+          </div>
+
+          <!-- 服务区域下拉 -->
+          <div class="config-field">
+            <label class="config-label" for="select-base-url">服务区域</label>
+            <select id="select-base-url" class="config-select">
+              <option value="https://api.coze.cn">🇨🇳 国内版 (coze.cn)</option>
+              <option value="https://api.coze.com">🌐 国际版 (coze.com)</option>
+            </select>
+          </div>
+
+          <!-- 保存按钮 -->
+          <button id="btn-save-config">保存配置</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ──────────────────────────────────────
+         右侧主区域
+    ────────────────────────────────────── -->
+    <main id="main">
+
+      <!-- 顶部标题栏 -->
+      <header id="chat-header">
+        <span class="chat-header-title" id="chat-header-title">Coze Chat</span>
+        <div class="chat-header-right">
+          <!-- 并发流式指示器 -->
+          <div id="stream-indicator">
+            <div class="stream-dot"></div>
+            <span id="stream-count">0</span> 个对话生成中
+          </div>
+        </div>
+      </header>
+
+      <!-- 空态（无对话时显示） -->
+      <div id="empty-state" class="hidden">
+        <svg class="empty-state-icon" viewBox="0 0 64 64" fill="none"
+             stroke="currentColor" stroke-width="1.5">
+          <path d="M52 8H12a4 4 0 0 0-4 4v32a4 4 0 0 0 4 4h8l6 8 6-8h20a4 4 0 0 0 4-4V12a4 4 0 0 0-4-4z"/>
+          <line x1="20" y1="24" x2="44" y2="24"/>
+          <line x1="20" y1="32" x2="36" y2="32"/>
+        </svg>
+        <div class="empty-state-title">开始与 AI 对话</div>
+        <div class="empty-state-desc">选择左侧历史对话，或点击「新建对话」开始</div>
+      </div>
+
+      <!-- 消息滚动区域 -->
+      <div id="messages-container"></div>
+
+      <!-- 底部输入区域 -->
+      <div id="input-area">
+        <div class="input-wrapper">
+          <textarea
+            id="chat-input"
+            placeholder="输入消息…"
+            rows="1"
+            disabled
+          ></textarea>
+          <button id="btn-send" title="发送 (Enter)" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+          <button id="btn-stop" class="hidden" title="停止生成">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-hint" id="input-hint">请先选择或新建对话</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div id="toast-container"></div>
+
+  <!-- ─── 应用脚本（顺序加载） ──────────────── -->
+  <script src="/js/store.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/stream.js"></script>
+  <script src="/js/renderer.js"></script>
+  <script src="/js/chat.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

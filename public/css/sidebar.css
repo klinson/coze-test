@@ -1,0 +1,240 @@
+/* ═══════════════════════════════════════════
+   sidebar.css — 左侧栏对话列表 & 配置
+═══════════════════════════════════════════ */
+
+/* ─── 对话列表项 ────────────────────────────── */
+.conv-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition);
+  position: relative;
+  margin-bottom: 2px;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+
+.conv-item:hover {
+  background-color: var(--color-hover);
+}
+
+.conv-item.active {
+  background-color: var(--color-primary-light);
+  border-left-color: var(--color-primary);
+}
+
+.conv-item-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.conv-item.active .conv-item-icon {
+  color: var(--color-primary);
+}
+
+.conv-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-item-title {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.conv-item.active .conv-item-title {
+  font-weight: 500;
+  color: var(--color-primary-dark);
+}
+
+.conv-item-time {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+
+/* 流式状态徽标 */
+.conv-item-badge {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* 删除按钮（hover 时显示） */
+.conv-item-delete {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition), color var(--transition), background-color var(--transition);
+}
+
+.conv-item:hover .conv-item-delete {
+  opacity: 1;
+}
+
+.conv-item-delete:hover {
+  color: var(--color-error);
+  background-color: var(--color-error-light);
+}
+
+.conv-item-delete svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* 空历史状态 */
+.conv-empty {
+  padding: var(--space-xl) var(--space-sm);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* ─── 配置表单 ──────────────────────────────── */
+.config-field {
+  margin-bottom: var(--space-md);
+}
+
+.config-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+  letter-spacing: 0.02em;
+}
+
+.config-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.config-input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  transition: border-color var(--transition), box-shadow var(--transition), background-color var(--transition);
+}
+
+.config-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-input);
+  background-color: var(--color-panel);
+}
+
+.config-input.valid {
+  border-color: var(--color-success);
+}
+
+/* 密码可见切换按钮 */
+.config-eye-btn {
+  position: absolute;
+  right: var(--space-xs);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition);
+  flex-shrink: 0;
+}
+
+.config-eye-btn:hover {
+  color: var(--color-text-secondary);
+}
+
+.config-eye-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* API Key 输入框有图标时右侧留空间 */
+.config-input.has-icon {
+  padding-right: 32px;
+}
+
+/* 下拉框 */
+.config-select {
+  width: 100%;
+  padding: var(--space-sm) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23AAAAAA' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.config-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-input);
+}
+
+/* ─── 并发状态指示器 ────────────────────────── */
+#stream-indicator {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-primary);
+  font-weight: 500;
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition);
+}
+
+#stream-indicator:hover {
+  background-color: var(--color-primary-light);
+}
+
+#stream-indicator.visible {
+  display: flex;
+}
+
+.stream-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  animation: pulse 1.2s ease-in-out infinite;
+}
