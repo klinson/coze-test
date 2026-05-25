@@ -15,12 +15,15 @@ const PORT = process.env.PORT || 3000;
 // ─── 安全中间件 ───────────────────────────────────────────────
 app.use(
   helmet({
+    // HTTP 环境下必须关闭 HSTS，否则浏览器会强制跳转 HTTPS
+    // 已上 HTTPS 后可删除此行，或改为 { maxAge: 31536000 }
+    strictTransportSecurity: false,
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'", // marked.js / highlight.js 内联脚本
+          "'unsafe-inline'",
           'cdn.jsdelivr.net',
           'cdnjs.cloudflare.com',
         ],
@@ -34,6 +37,8 @@ app.use(
         fontSrc: ["'self'", 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net'],
         connectSrc: ["'self'"],
         imgSrc: ["'self'", 'data:'],
+        // HTTP 环境下必须禁用，否则浏览器会把所有资源请求强制升级为 HTTPS
+        upgradeInsecureRequests: null,
       },
     },
   })
