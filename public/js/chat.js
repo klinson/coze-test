@@ -20,6 +20,8 @@ let btnSend           = null;
 let btnStop           = null;
 let inputHint         = null;
 
+let shouldAutoScroll  = true;
+
 // ─── 工具：转义 HTML ─────────────────────────
 function esc(str) {
   return String(str || '')
@@ -63,7 +65,7 @@ function loadConversation(convId) {
     messages.forEach(msg => renderMessage(msg, convId, false));
   }
 
-  scrollToBottom();
+  scrollToBottom(true);
   updateInputState();
 }
 
@@ -627,9 +629,18 @@ function stopCurrentStream() {
 }
 
 // ─── 工具：滚动到底部 ────────────────────────
-function scrollToBottom() {
+function updateAutoScrollFlag() {
+  if (!messagesContainer) return;
+  const threshold = 80;
+  const distance = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight;
+  shouldAutoScroll = distance <= threshold;
+}
+
+function scrollToBottom(force = false) {
   if (messagesContainer) {
+    if (!force && !shouldAutoScroll) return;
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (force) shouldAutoScroll = true;
   }
 }
 
@@ -680,6 +691,8 @@ function initChat() {
   if (btnStop) btnStop.addEventListener('click', stopCurrentStream);
 
   if (messagesContainer) {
+    updateAutoScrollFlag();
+    messagesContainer.addEventListener('scroll', updateAutoScrollFlag, { passive: true });
     messagesContainer.addEventListener('click', (e) => {
       const btn = e.target.closest('.message-copy-btn');
       if (!btn) return;
