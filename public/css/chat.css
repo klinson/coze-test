@@ -71,9 +71,41 @@
 }
 
 .message-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: var(--color-text-muted);
   padding: 0 var(--space-xs);
+}
+
+.message-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.message-copy-btn:hover {
+  background-color: var(--color-hover);
+  color: var(--color-text-secondary);
+}
+
+.message-copy-btn:active {
+  transform: scale(0.96);
+}
+
+.message-copy-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 /* ─── 思考折叠块 ────────────────────────────── */

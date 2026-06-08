@@ -92,7 +92,15 @@ function buildUserBubble(msg) {
   return `
     <div class="message-bubble-wrapper">
       <div class="message-bubble user">${esc(msg.content)}</div>
-      <div class="message-time">${Store.formatTime(msg.ts)}</div>
+      <div class="message-time">
+        <span class="message-time-text">${Store.formatTime(msg.ts)}</span>
+        <button class="message-copy-btn" type="button" title="复制">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <div class="message-avatar user">
       <svg viewBox="0 0 24 24" fill="currentColor">
@@ -136,10 +144,62 @@ function buildAiBubble(msg, convId) {
         ${thinkingHtml}
         ${answerHtml}
       </div>
-      <div class="message-time">${Store.formatTime(msg.ts)}</div>
+      <div class="message-time">
+        <span class="message-time-text">${Store.formatTime(msg.ts)}</span>
+        <button class="message-copy-btn" type="button" title="复制">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
       ${actionsHtml}
     </div>
   `;
+}
+
+async function copyToClipboard(text) {
+  const value = String(text || '').replace(/\r\n/g, '\n').trimEnd();
+  if (!value) {
+    Toast.show('没有可复制的内容', 'error');
+    return;
+  }
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      Toast.show('已复制');
+      return;
+    }
+  } catch {}
+
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    Toast.show('已复制');
+  } catch {
+    Toast.show('复制失败', 'error');
+  }
+}
+
+function getCopyTextFromRow(row) {
+  if (!row) return '';
+
+  if (row.classList.contains('user')) {
+    const bubble = row.querySelector('.message-bubble.user');
+    return bubble ? bubble.textContent : '';
+  }
+
+  const answer = row.querySelector('.answer-content');
+  if (!answer) return '';
+  return answer.innerText;
 }
 
 // ─── 构建思考块 HTML ─────────────────────────
@@ -618,6 +678,15 @@ function initChat() {
 
   if (btnSend) btnSend.addEventListener('click', sendMessage);
   if (btnStop) btnStop.addEventListener('click', stopCurrentStream);
+
+  if (messagesContainer) {
+    messagesContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.message-copy-btn');
+      if (!btn) return;
+      const row = btn.closest('.message-row');
+      copyToClipboard(getCopyTextFromRow(row));
+    });
+  }
 
   if (chatInput) {
     chatInput.addEventListener('keydown', (e) => {
